@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/satori/go.uuid"
 	"html/template"
 	"net/http"
 )
@@ -18,15 +19,20 @@ func main() {
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
-	cookie, err := req.Cookie("user-id")
+	c := getCookie(w, req)
+	tpl.ExecuteTemplate(w, "index.gohtml", c.Value)
+}
+
+func getCookie(w http.ResponseWriter, req *http.Request) *http.Cookie {
+	cookie, err := req.Cookie("session")
 
 	if err == http.ErrNoCookie {
+		sessionId := uuid.NewV4()
 		cookie = &http.Cookie{
-			Name:  "user-id",
-			Value: "xxxx",
+			Name:  "session",
+			Value: sessionId.String(),
 		}
+		http.SetCookie(w, cookie)
 	}
-
-	http.SetCookie(w, cookie)
-	tpl.ExecuteTemplate(w, "index.gohtml", nil)
+	return cookie
 }
