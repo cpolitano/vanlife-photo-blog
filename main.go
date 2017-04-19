@@ -18,5 +18,15 @@ func main() {
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
+	cookie, err := req.Cookie("user-id")
+
+	if err == http.ErrNoCookie {
+		cookie = &http.Cookie{
+			Name:  "user-id",
+			Value: "xxxx",
+		}
+	}
+
+	http.SetCookie(w, cookie)
 	tpl.ExecuteTemplate(w, "index.gohtml", nil)
 }
