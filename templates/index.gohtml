@@ -7,6 +7,12 @@
 <body>
 
 	<h1>Aloha</h1>
+
+	<form method="post" enctype="multipart/form-data">
+		<input type="file" name="new-file">
+		<input type="submit">
+	</form>
+
 	<div>
 		{{range .}}
 		<p>{{.}}</p>

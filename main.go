@@ -1,9 +1,14 @@
 package main
 
 import (
+	"crypto/sha1"
+	"fmt"
 	"github.com/satori/go.uuid"
 	"html/template"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -21,8 +26,36 @@ func main() {
 
 func index(w http.ResponseWriter, req *http.Request) {
 	c := getCookie(w, req)
-	c = appendValue(w, c)
-	xs := strings.Split(c.Value, "|")
+
+	if req.Method == http.MethodPost {
+		multipartFile, fileHeader, err := req.FormFile("new-file")
+		if err != nil {
+			fmt.Println(err)
+		}
+		defer multipartFile.Close()
+
+		fileExtension := strings.Split(fileHeader.Filename, ".")[1]
+		h := sha1.New()
+		io.Copy(h, multipartFile)
+		fileName := fmt.Sprintf("%x", h.Sum(nil)) + "." + fileExtension // print h as hexidecimal
+		// create new file
+		workingDir, err := os.Getwd()
+		if err != nil {
+			fmt.Println(err)
+		}
+		path := filepath.Join(workingDir, "public", "images", fileName)
+		newFile, err := os.Create(path)
+		if err != nil {
+			fmt.Println(err)
+		}
+		defer newFile.Close()
+
+		multipartFile.Seek(0, 0)        // reset to beginning of file
+		io.Copy(newFile, multipartFile) // copy file to public/images
+		c = appendValue(w, c, fileName)
+	}
+
+	xs := strings.Split(c.Value, "|") // creates slice of strings
 	tpl.ExecuteTemplate(w, "index.gohtml", xs)
 }
 
@@ -40,24 +73,15 @@ func getCookie(w http.ResponseWriter, req *http.Request) *http.Cookie {
 	return cookie
 }
 
-func appendValue(w http.ResponseWriter, c *http.Cookie) *http.Cookie {
-	// photos
-	p1 := "vanlife.jpg"
-	p2 := "vanbeach.jpg"
-	p3 := "vansurfing.jpg"
+func appendValue(w http.ResponseWriter, c *http.Cookie, fname string) *http.Cookie {
 
 	s := c.Value
 
-	if !strings.Contains(s, p1) {
-		s += "|" + p1
-	}
-	if !strings.Contains(s, p2) {
-		s += "|" + p2
-	}
-	if !strings.Contains(s, p3) {
-		s += "|" + p3
+	if !strings.Contains(s, fname) {
+		s += "|" + fname
 	}
 
 	c.Value = s
+	http.SetCookie(w, c)
 	return c
 }
